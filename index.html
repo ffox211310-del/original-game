@@ -156,28 +156,32 @@
 
     <script>
         let gameState = 'home';
-        let player = { x: 1000, y: 1000, size: 40, speed: 0.8 }; // アルパカサイズ通常に戻す
+        let player = { x: 1000, y: 1000, size: 40, speed: 0.8 };
         let camera = { x: 0, y: 0 };
         let worldSize = 2000;
         let moveIntervals = {};
         let lastTime = 0;
         
-        // 都市マップ生成
+        // 都市マップ生成（当たり判定付き）
         const buildings = [];
         const tileSize = 100;
 
         function generateCity() {
             buildings.length = 0;
-            const buildingEmojis = ['🏢', '🏗️']; // 🏙️完全削除
+            const buildingEmojis = ['🏢', '🏗️'];
             
             for (let x = 0; x < worldSize; x += tileSize) {
                 for (let y = 0; y < worldSize; y += tileSize) {
                     if (Math.random() < 0.4) {
                         buildings.push({
-                            x: x + tileSize/2,
-                            y: y + tileSize/2,
+                            gridX: Math.floor(x / tileSize),  // グリッド座標
+                            gridY: Math.floor(y / tileSize),
+                            worldX: x + tileSize/2,          // ワールド座標（描画用）
+                            worldY: y + tileSize/2,
                             emoji: buildingEmojis[Math.floor(Math.random() * 2)],
-                            size: tileSize
+                            width: tileSize,
+                            height: tileSize,
+                            blocked: true  // 通り抜け不可
                         });
                     }
                 }
@@ -238,9 +242,45 @@
             if (keyActions[e.key]) movePlayer(...keyActions[e.key]);
         });
 
+        // 衝突判定：プレイヤーが建物マスに入るかチェック
+        function checkCollision(newX, newY) {
+            const playerLeft = newX - player.size/2;
+            const playerRight = newX + player.size/2;
+            const playerTop = newY - player.size/2;
+            const playerBottom = newY + player.size/2;
+            const playerGridX = Math.floor(playerLeft / tileSize);
+            const playerGridY = Math.floor(playerTop / tileSize);
+
+            // プレイヤーが占めるグリッドマスをチェック
+            for (let dx = 0; dx < 2; dx++) {
+                for (let dy = 0; dy < 2; dy++) {
+                    const checkGridX = playerGridX + dx;
+                    const checkGridY = playerGridY + dy;
+                    
+                    // このグリッドに建物があるか？
+                    const building = buildings.find(b => 
+                        b.gridX === checkGridX && b.gridY === checkGridY
+                    );
+                    
+                    if (building) {
+                        return true; // 衝突！
+                    }
+                }
+            }
+            return false; // 衝突なし
+        }
+
         function movePlayer(dx, dy) {
-            player.x += dx * player.speed;
-            player.y += dy * player.speed;
+            const newX = player.x + dx * player.speed;
+            const newY = player.y + dy * player.speed;
+            
+            // 衝突チェック
+            if (!checkCollision(newX, newY)) {
+                player.x = newX;
+                player.y = newY;
+            }
+            
+            // ワールド境界
             player.x = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.x));
             player.y = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.y));
         }
@@ -295,30 +335,15 @@
                 ctx.stroke();
             }
 
-            // 大きな建物描画
+            // 建物描画
             ctx.font = '80px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#fff';
             
             buildings.forEach(building => {
-                const screenX = building.x - camera.x;
-                const screenY = building.y - camera.y;
+                const screenX = building.worldX - camera.x;
+                const screenY = building.worldY - camera.y;
                 if (screenX > -100 && screenX < canvas.width + 100 &&
                     screenY > -100 && screenY < canvas.height + 100) {
-                    ctx.fillText(building.emoji, screenX, screenY);
-                }
-            });
-
-            // 🦙（現実的なサイズ）
-            ctx.font = '40px Arial';
-            ctx.fillStyle = '#fff';
-            ctx.fillText('🦙', player.x - camera.x, player.y - camera.y);
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        canvas.focus();
-    </script>
-</body>
-</html>
+                    ctx.fillText(building.emoji, screenX, screenY
