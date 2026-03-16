@@ -164,19 +164,20 @@
         
         // 都市マップ生成
         const buildings = [];
-        const buildingEmojis = ['🏢', '🏗️', '🏙️', '🏢', '🏗️'];
-        const tileSize = 80; // 建物1つ分のサイズ
+        const tileSize = 80;
 
         function generateCity() {
+            buildings.length = 0; // クリア
+            const buildingEmojis = ['🏢', '🏗️', '🏙️'];
+            
             for (let x = 0; x < worldSize; x += tileSize) {
                 for (let y = 0; y < worldSize; y += tileSize) {
-                    // 30%の確率で建物を配置（道路スペース確保）
-                    if (Math.random() < 0.3) {
+                    if (Math.random() < 0.35) {
                         buildings.push({
                             x: x + tileSize/2,
                             y: y + tileSize/2,
-                            emoji: buildingEmojis[Math.floor(Math.random() * buildingEmojis.length)],
-                            size: tileSize
+                            emoji: buildingEmojis[Math.floor(Math.random() * 3)],
+                            size: tileSize * 0.8
                         });
                     }
                 }
@@ -188,7 +189,6 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // キャンバスサイズ自動調整
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
             canvas.width = rect.width;
@@ -204,19 +204,16 @@
             gameState = 'story';
             homeScreen.style.display = 'none';
             controlPanel.style.display = 'grid';
-            player.x = worldSize / 2; // 都市中央スポーン
+            player.x = worldSize / 2;
             player.y = worldSize / 2;
             
-            // 都市生成
             generateCity();
             updateCamera();
             gameLoop();
         }
 
-        // 長押し移動
         function setupLongPress(btnId, dx, dy) {
             const btn = document.getElementById(btnId);
-            
             const startMove = () => { moveIntervals[btnId] = true; };
             const stopMove = () => { moveIntervals[btnId] = false; };
 
@@ -232,7 +229,6 @@
         setupLongPress('leftBtn', -1, 0);
         setupLongPress('rightBtn', 1, 0);
 
-        // PCキー
         document.addEventListener('keydown', (e) => {
             if (gameState !== 'story') return;
             const keyActions = {
@@ -272,16 +268,16 @@
             }
             lastTime = currentTime;
 
-            // 背景クリア（夜の都市）
+            // 夜の都市背景
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             gradient.addColorStop(0, '#0a0a1a');
             gradient.addColorStop(1, '#1a1a2a');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 道路（灰色グリッド）
+            // 道路グリッド
             ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 2;
             const roadSize = 80;
             const startX = Math.floor(camera.x / roadSize) * roadSize;
             const startY = Math.floor(camera.y / roadSize) * roadSize;
@@ -299,21 +295,24 @@
                 ctx.stroke();
             }
 
-            // 建物描画
-            ctx.font = `${tileSize}px Arial`;
+            // 建物描画（フォントサイズ修正）
+            ctx.font = '48px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+            
             buildings.forEach(building => {
                 const screenX = building.x - camera.x;
                 const screenY = building.y - camera.y;
-                if (screenX > -tileSize && screenX < canvas.width + tileSize &&
-                    screenY > -tileSize && screenY < canvas.height + tileSize) {
+                if (screenX > -60 && screenX < canvas.width + 60 &&
+                    screenY > -60 && screenY < canvas.height + 60) {
                     ctx.fillText(building.emoji, screenX, screenY);
                 }
             });
 
-            // 🦙（主人公）
-            ctx.font = `${Math.min(canvas.width, canvas.height) * 0.08}px Arial`;
+            // 🦙（白く復活）
+            ctx.fillStyle = '#fff';
+            ctx.font = '40px Arial';
             ctx.fillText('🦙', player.x - camera.x, player.y - camera.y);
 
             requestAnimationFrame(gameLoop);
