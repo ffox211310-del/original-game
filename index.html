@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>オリジナルゲーム</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
+        }
+        
+        body {
             background: linear-gradient(45deg, #87CEEB, #98FB98);
             font-family: 'Arial', sans-serif;
             overflow: hidden;
@@ -19,10 +23,11 @@
 
         #gameContainer {
             position: relative;
-            width: 360px;  /* スマホ縦長に最適化 */
-            height: 640px; /* 縦長比率 */
+            width: 360px;
+            height: 640px;
             border: 3px solid #333;
             background: #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         #homeScreen {
@@ -31,7 +36,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(45deg, #87CEEB, #98FB98);
+            background: #000;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -40,33 +45,34 @@
         }
 
         #gameTitle {
-            font-size: 36px;  /* 縦長なので少し小さく */
+            font-size: 40px;
             font-weight: bold;
-            color: #2c5f2d;
-            margin-bottom: 40px;
-            text-shadow: 3px 3px 0px #fff;
+            color: #fff;
+            margin-bottom: 50px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
 
         #storyButton {
-            font-size: 20px;
-            padding: 12px 35px;
+            font-size: 22px;
+            padding: 15px 40px;
             background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
             color: white;
             border: none;
-            border-radius: 25px;
+            border-radius: 30px;
             cursor: pointer;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
             transition: all 0.3s ease;
         }
 
         #storyButton:hover, #storyButton:active {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 20px rgba(0,0,0,0.4);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
         }
 
         #gameCanvas {
             display: block;
-            background: #90EE90; /* 草原色 */
+            width: 100%;
+            height: 100%;
         }
 
         #controlPanel {
@@ -75,9 +81,9 @@
             left: 50%;
             transform: translateX(-50%);
             display: none;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             padding: 15px;
-            border-radius: 15px;
+            border-radius: 20px;
             gap: 8px;
         }
 
@@ -90,14 +96,15 @@
             border: none;
             border-radius: 50%;
             cursor: pointer;
-            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
             transition: all 0.2s;
             touch-action: manipulation;
+            user-select: none;
         }
 
         .control-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transform: scale(0.9);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
         }
 
         .dpad {
@@ -141,10 +148,11 @@
 
     <script>
         // ゲーム状態
-        let gameState = 'home'; // 'home' or 'story'
-        let player = { x: 180, y: 320, size: 40, speed: 4 }; // ワールド座標
-        let camera = { x: 0, y: 0 }; // カメラ位置
-        let worldSize = 2000; // オープンワールドの広さ
+        let gameState = 'home';
+        let player = { x: 1000, y: 1000, size: 40, speed: 4 };
+        let camera = { x: 0, y: 0 };
+        let worldSize = 2000;
+        let moveIntervals = {};
 
         // DOM要素
         const homeScreen = document.getElementById('homeScreen');
@@ -160,51 +168,63 @@
             homeScreen.style.display = 'none';
             controlPanel.style.display = 'grid';
             
-            // 草原中央にスポーン
             player.x = worldSize / 2;
             player.y = worldSize / 2;
             updateCamera();
-            
             gameLoop();
         }
 
-        // コントロールイベント（タッチ長押し対応）
-        function addControlEvent(btnId, dx, dy) {
+        // 長押し移動システム
+        function setupLongPress(btnId, dx, dy) {
             const btn = document.getElementById(btnId);
-            let pressTimer;
             
+            const startMove = () => {
+                movePlayer(dx, dy);
+                moveIntervals[btnId] = setInterval(() => movePlayer(dx, dy), 80);
+            };
+            
+            const stopMove = () => {
+                if (moveIntervals[btnId]) {
+                    clearInterval(moveIntervals[btnId]);
+                    delete moveIntervals[btnId];
+                }
+            };
+
+            // タッチ
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                movePlayer(dx, dy);
-                pressTimer = setInterval(() => movePlayer(dx, dy), 100);
-            });
+                startMove();
+            }, { passive: false });
             
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                clearInterval(pressTimer);
-            });
+                stopMove();
+            }, { passive: false });
             
-            btn.addEventListener('mousedown', () => {
-                movePlayer(dx, dy);
-                pressTimer = setInterval(() => movePlayer(dx, dy), 100);
-            });
-            
-            btn.addEventListener('mouseup', () => clearInterval(pressTimer));
+            btn.addEventListener('touchcancel', stopMove);
+
+            // マウス
+            btn.addEventListener('mousedown', startMove);
+            document.addEventListener('mouseup', stopMove);
         }
 
-        addControlEvent('upBtn', 0, -1);
-        addControlEvent('downBtn', 0, 1);
-        addControlEvent('leftBtn', -1, 0);
-        addControlEvent('rightBtn', 1, 0);
+        // 各ボタンに長押し設定
+        setupLongPress('upBtn', 0, -1);
+        setupLongPress('downBtn', 0, 1);
+        setupLongPress('leftBtn', -1, 0);
+        setupLongPress('rightBtn', 1, 0);
 
-        // PC用キー入力
+        // PCキー
         document.addEventListener('keydown', (e) => {
             if (gameState !== 'story') return;
-            switch(e.key) {
-                case 'ArrowUp': movePlayer(0, -1); break;
-                case 'ArrowDown': movePlayer(0, 1); break;
-                case 'ArrowLeft': movePlayer(-1, 0); break;
-                case 'ArrowRight': movePlayer(1, 0); break;
+            const keyActions = {
+                'ArrowUp': [0, -1],
+                'ArrowDown': [0, 1],
+                'ArrowLeft': [-1, 0],
+                'ArrowRight': [1, 0]
+            };
+            if (keyActions[e.key]) {
+                movePlayer(...keyActions[e.key]);
             }
         });
 
@@ -212,7 +232,6 @@
             player.x += dx * player.speed;
             player.y += dy * player.speed;
             
-            // ワールド境界チェック
             player.x = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.x));
             player.y = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.y));
             
@@ -220,11 +239,8 @@
         }
 
         function updateCamera() {
-            // 🦙を画面中央に固定
             camera.x = player.x - canvas.width / 2;
             camera.y = player.y - canvas.height / 2;
-            
-            // カメラの境界制限
             camera.x = Math.max(0, Math.min(worldSize - canvas.width, camera.x));
             camera.y = Math.max(0, Math.min(worldSize - canvas.height, camera.y));
         }
@@ -232,38 +248,38 @@
         function gameLoop() {
             if (gameState !== 'story') return;
 
-            // 草原背景（カメラに追従）
+            // 緑と黄緑の縞々草原
             ctx.fillStyle = '#90EE90';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // 雲っぽい装飾（ワールド座標で動く）
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            for(let i = 0; i < 5; i++) {
-                const wx = (camera.x + i * 400) % worldSize;
-                const wy = (camera.y + i * 200) % worldSize;
-                ctx.beginPath();
-                ctx.arc(wx - camera.x, wy - camera.y, 30, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // 🦙描画（画面中央固定）
             ctx.save();
+            ctx.translate(-camera.x % 80, -camera.y % 80); // 縞々パターン
+            
+            // 縞々地面（緑と黄緑）
+            for (let x = 0; x < worldSize; x += 80) {
+                for (let y = 0; y < worldSize; y += 80) {
+                    ctx.fillStyle = (Math.floor(x/80) + Math.floor(y/80)) % 2 === 0 ? '#32CD32' : '#90EE90';
+                    ctx.fillRect(x, y, 80, 80);
+                }
+            }
+            ctx.restore();
+
+            // 🦙（画面中央）
             ctx.font = '40px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('🦙', player.x - camera.x, player.y - camera.y);
-            ctx.restore();
 
-            // デバッグ：座標表示
+            // 座標表示
             ctx.fillStyle = 'white';
             ctx.font = '16px Arial';
             ctx.textAlign = 'left';
-            ctx.fillText(`X: ${Math.round(player.x)} Y: ${Math.round(player.y)}`, 10, 30);
+            ctx.textBaseline = 'top';
+            ctx.fillText(`X:${Math.round(player.x)} Y:${Math.round(player.y)}`, 10, 25);
 
             requestAnimationFrame(gameLoop);
         }
 
-        // 初期化
         canvas.focus();
     </script>
 </body>
