@@ -275,15 +275,27 @@ canvas.addEventListener('touchstart', (e) => {
     }
 }, { passive: false });
 
+            // キーボード操作
+document.addEventListener('keydown', (e) => {
+    const keyActions = {
+        'ArrowUp': () => moveFlags.up = true,
+        'ArrowDown': () => moveFlags.down = true,
+        'ArrowLeft': () => moveFlags.left = true,
+        'ArrowRight': () => moveFlags.right = true
+    };
+    if (keyActions[e.key]) keyActions[e.key]();
+});
+
+document.addEventListener('keyup', (e) => {
+    const keyActions = {
+        'ArrowUp': () => moveFlags.up = false,
+        'ArrowDown': () => moveFlags.down = false,
+        'ArrowLeft': () => moveFlags.left = false,
+        'ArrowRight': () => moveFlags.right = false
+    };
+    if (keyActions[e.key]) keyActions[e.key]();
+});
             
-            const keyActions = {
-                'ArrowUp': () => moveFlags.up = true,
-                'ArrowDown': () => moveFlags.down = true,
-                'ArrowLeft': () => moveFlags.left = true,
-                'ArrowRight': () => moveFlags.right = true
-            };
-            if (keyActions[e.key]) keyActions[e.key]();
-        });
 
         document.addEventListener('keyup', (e) => {
             const keyActions = {
