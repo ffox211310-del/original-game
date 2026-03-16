@@ -156,7 +156,7 @@
 
     <script>
         let gameState = 'home';
-        let player = { x: 1000, y: 1000, size: 40, speed: 0.8 };
+        let player = { x: 1000, y: 1000, size: 40, speed: 0.8 }; // アルパカサイズ通常に戻す
         let camera = { x: 0, y: 0 };
         let worldSize = 2000;
         let moveIntervals = {};
@@ -164,20 +164,20 @@
         
         // 都市マップ生成
         const buildings = [];
-        const tileSize = 80;
+        const tileSize = 100;
 
         function generateCity() {
-            buildings.length = 0; // クリア
-            const buildingEmojis = ['🏢', '🏗️', '🏙️'];
+            buildings.length = 0;
+            const buildingEmojis = ['🏢', '🏗️']; // 🏙️完全削除
             
             for (let x = 0; x < worldSize; x += tileSize) {
                 for (let y = 0; y < worldSize; y += tileSize) {
-                    if (Math.random() < 0.35) {
+                    if (Math.random() < 0.4) {
                         buildings.push({
                             x: x + tileSize/2,
                             y: y + tileSize/2,
-                            emoji: buildingEmojis[Math.floor(Math.random() * 3)],
-                            size: tileSize * 0.8
+                            emoji: buildingEmojis[Math.floor(Math.random() * 2)],
+                            size: tileSize
                         });
                     }
                 }
@@ -278,7 +278,7 @@
             // 道路グリッド
             ctx.strokeStyle = '#333';
             ctx.lineWidth = 2;
-            const roadSize = 80;
+            const roadSize = 100;
             const startX = Math.floor(camera.x / roadSize) * roadSize;
             const startY = Math.floor(camera.y / roadSize) * roadSize;
             
@@ -295,8 +295,8 @@
                 ctx.stroke();
             }
 
-            // 建物描画（フォントサイズ修正）
-            ctx.font = '48px Arial';
+            // 大きな建物描画
+            ctx.font = '80px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#fff';
@@ -304,15 +304,15 @@
             buildings.forEach(building => {
                 const screenX = building.x - camera.x;
                 const screenY = building.y - camera.y;
-                if (screenX > -60 && screenX < canvas.width + 60 &&
-                    screenY > -60 && screenY < canvas.height + 60) {
+                if (screenX > -100 && screenX < canvas.width + 100 &&
+                    screenY > -100 && screenY < canvas.height + 100) {
                     ctx.fillText(building.emoji, screenX, screenY);
                 }
             });
 
-            // 🦙（白く復活）
-            ctx.fillStyle = '#fff';
+            // 🦙（現実的なサイズ）
             ctx.font = '40px Arial';
+            ctx.fillStyle = '#fff';
             ctx.fillText('🦙', player.x - camera.x, player.y - camera.y);
 
             requestAnimationFrame(gameLoop);
