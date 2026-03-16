@@ -173,6 +173,17 @@
         let gameLoopId = null;
         const buildings = [];
         const tileSize = 100;
+        
+        // ボス関連
+        let boss = null;
+        let showBossScene = false;
+        let bossDialogueStep = 0;
+        const bossDialogue = [
+            "おい、新入りか？",
+            "初任務だ。例の荷物を...",
+            "東の倉庫まで運んでこい",
+            "わかったら動け！"
+        ];
 
         // 多彩な建物絵文字リスト
         const buildingEmojis = ['🏢', '🏗️', '🏪', '🏦', '🗼', '🏬', '🏭', '🏣', '🏫', '🏥', '⛪️'];
@@ -191,6 +202,14 @@
                     }
                 }
             }
+            
+            // ボスを固定位置に配置（南東エリア）
+            boss = {
+                worldX: 1600,
+                worldY: 1400,
+                emoji: '👤',
+                size: 50
+            };
         }
 
         function resizeCanvas() {
@@ -247,6 +266,18 @@
 
         document.addEventListener('keydown', (e) => {
             if (gameState !== 'story') return;
+            if (showBossScene) {
+                // ボス会話進行
+                if (e.key === 'Enter' || e.key === ' ') {
+                    bossDialogueStep++;
+                    if (bossDialogueStep >= bossDialogue.length) {
+                        showBossScene = false;
+                        controlPanel.style.display = 'grid';
+                    }
+                }
+                return;
+            }
+            
             const keyActions = {
                 'ArrowUp': () => moveFlags.up = true,
                 'ArrowDown': () => moveFlags.down = true,
@@ -270,7 +301,6 @@
             player.x += dx * player.speed;
             player.y += dy * player.speed;
             
-            // ワールド境界のみチェック
             player.x = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.x));
             player.y = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.y));
         }
@@ -282,6 +312,14 @@
             camera.y = Math.max(0, Math.min(worldSize - canvas.height, camera.y));
         }
 
+        function checkBossEncounter() {
+            const distance = Math.sqrt(
+                Math.pow(player.x - boss.worldX, 2) + 
+                Math.pow(player.y - boss.worldY, 2)
+            );
+            return distance < 120;
+        }
+
         function gameLoop(currentTime) {
             if (gameState !== 'story') return;
 
@@ -289,12 +327,21 @@
                 const deltaTime = Math.min((currentTime - lastTime) / 16.67, 3);
                 const moveSpeed = player.speed * deltaTime;
 
-                if (moveFlags.up) movePlayer(0, -moveSpeed);
-                if (moveFlags.down) movePlayer(0, moveSpeed);
-                if (moveFlags.left) movePlayer(-moveSpeed, 0);
-                if (moveFlags.right) movePlayer(moveSpeed, 0);
+                if (!showBossScene) {
+                    if (moveFlags.up) movePlayer(0, -moveSpeed);
+                    if (moveFlags.down) movePlayer(0, moveSpeed);
+                    if (moveFlags.left) movePlayer(-moveSpeed, 0);
+                    if (moveFlags.right) movePlayer(moveSpeed, 0);
+                }
                 
                 updateCamera();
+                
+                // ボス接近チェック
+                if (!showBossScene && checkBossEncounter()) {
+                    showBossScene = true;
+                    bossDialogueStep = 0;
+                    controlPanel.style.display = 'none';
+                }
             }
             lastTime = currentTime;
 
@@ -325,7 +372,7 @@
                 ctx.stroke();
             }
 
-            // 多様な建物描画
+            // 建物描画
             ctx.font = '80px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -340,9 +387,45 @@
                 }
             });
 
+            // ボス描画
+            if (boss) {
+                const bossScreenX = boss.worldX - camera.x;
+                const bossScreenY = boss.worldY - camera.y;
+                ctx.font = '60px Arial';
+                ctx.fillText(boss.emoji, bossScreenX, bossScreenY);
+            }
+
             // 🦙
             ctx.font = '40px Arial';
             ctx.fillText('🦙', player.x - camera.x, player.y - camera.y);
+
+            // ボス会話シーン
+            if (showBossScene) {
+                // 半透明オーバーレイ
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 会話ボックス
+                ctx.fillStyle = '#222';
+                ctx.fillRect(20, canvas.height - 140, canvas.width - 40, 100);
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(20, canvas.height - 140, canvas.width - 40, 100);
+                
+                // 会話テキスト
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('👤 ボス: ' + bossDialogue[bossDialogueStep], 35, canvas.height - 90);
+                
+                // 次の指示
+                if (bossDialogueStep < bossDialogue.length - 1) {
+                    ctx.fillText('Enterキーで進める', 35, canvas.height - 55);
+                } else {
+                    ctx.fillText('Enterキーで任務開始', 35, canvas.height - 55);
+                }
+            }
 
             gameLoopId = requestAnimationFrame(gameLoop);
         }
