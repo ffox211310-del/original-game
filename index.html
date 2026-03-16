@@ -174,7 +174,7 @@
         const buildings = [];
         const tileSize = 100;
 
-        // 新しい建物絵文字リスト
+        // 多彩な建物絵文字リスト
         const buildingEmojis = ['🏢', '🏗️', '🏪', '🏦', '🗼', '🏬', '🏭', '🏣', '🏫', '🏥', '⛪️'];
 
         function generateCity() {
@@ -184,8 +184,6 @@
                 for (let y = 0; y < worldSize; y += tileSize) {
                     if (Math.random() < 0.35) {
                         buildings.push({
-                            gridX: Math.floor(x / tileSize),
-                            gridY: Math.floor(y / tileSize),
                             worldX: x + tileSize/2,
                             worldY: y + tileSize/2,
                             emoji: buildingEmojis[Math.floor(Math.random() * buildingEmojis.length)]
@@ -219,7 +217,7 @@
 
         // コントロール設定
         function setupControls() {
-            ['upBtn', 'downBtn', 'leftBtn', 'rightBtn'].forEach((btnId, index) => {
+            ['upBtn', 'downBtn', 'leftBtn', 'rightBtn'].forEach((btnId) => {
                 const btn = document.getElementById(btnId);
                 
                 btn.addEventListener('touchstart', (e) => {
@@ -268,31 +266,13 @@
             if (keyActions[e.key]) keyActions[e.key]();
         });
 
-        function checkCollision(newX, newY) {
-            const playerLeft = newX - player.size/2;
-            const playerTop = newY - player.size/2;
-            const playerGridX = Math.floor(playerLeft / tileSize);
-            const playerGridY = Math.floor(playerTop / tileSize);
-
-            for (let dx = 0; dx < 2; dx++) {
-                for (let dy = 0; dy < 2; dy++) {
-                    const checkGridX = playerGridX + dx;
-                    const checkGridY = playerGridY + dy;
-                    const building = buildings.find(b => b.gridX === checkGridX && b.gridY === checkGridY);
-                    if (building) return true;
-                }
-            }
-            return false;
-        }
-
         function movePlayer(dx, dy) {
-            const newX = player.x + dx * player.speed;
-            const newY = player.y + dy * player.speed;
+            player.x += dx * player.speed;
+            player.y += dy * player.speed;
             
-            if (!checkCollision(newX, newY)) {
-                player.x = newX;
-                player.y = newY;
-            }
+            // ワールド境界のみチェック
+            player.x = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.x));
+            player.y = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.y));
         }
 
         function updateCamera() {
