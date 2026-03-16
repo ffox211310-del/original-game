@@ -264,19 +264,17 @@
 
         setupControls();
 
-        document.addEventListener('keydown', (e) => {
-            if (gameState !== 'story') return;
-            if (showBossScene) {
-                // ボス会話進行
-                if (e.key === 'Enter' || e.key === ' ') {
-                    bossDialogueStep++;
-                    if (bossDialogueStep >= bossDialogue.length) {
-                        showBossScene = false;
-                        controlPanel.style.display = 'grid';
-                    }
-                }
-                return;
-            }
+        // スマホタッチ用ボス会話進行
+canvas.addEventListener('touchstart', (e) => {
+    if (gameState !== 'story' || !showBossScene) return;
+    e.preventDefault();
+    bossDialogueStep++;
+    if (bossDialogueStep >= bossDialogue.length) {
+        showBossScene = false;
+        controlPanel.style.display = 'grid';
+    }
+}, { passive: false });
+
             
             const keyActions = {
                 'ArrowUp': () => moveFlags.up = true,
@@ -421,9 +419,9 @@
                 
                 // 次の指示
                 if (bossDialogueStep < bossDialogue.length - 1) {
-                    ctx.fillText('Enterキーで進める', 35, canvas.height - 55);
+                    ctx.fillText('タッチで進める', 35, canvas.height - 55);
                 } else {
-                    ctx.fillText('Enterキーで任務開始', 35, canvas.height - 55);
+                    ctx.fillText('タッチで任務開始', 35, canvas.height - 55);
                 }
             }
 
@@ -433,4 +431,3 @@
         canvas.focus();
     </script>
 </body>
-</html>
