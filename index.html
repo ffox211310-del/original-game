@@ -161,13 +161,34 @@
         let worldSize = 2000;
         let moveIntervals = {};
         let lastTime = 0;
+        
+        // 都市マップ生成
+        const buildings = [];
+        const buildingEmojis = ['🏢', '🏗️', '🏙️', '🏢', '🏗️'];
+        const tileSize = 80; // 建物1つ分のサイズ
+
+        function generateCity() {
+            for (let x = 0; x < worldSize; x += tileSize) {
+                for (let y = 0; y < worldSize; y += tileSize) {
+                    // 30%の確率で建物を配置（道路スペース確保）
+                    if (Math.random() < 0.3) {
+                        buildings.push({
+                            x: x + tileSize/2,
+                            y: y + tileSize/2,
+                            emoji: buildingEmojis[Math.floor(Math.random() * buildingEmojis.length)],
+                            size: tileSize
+                        });
+                    }
+                }
+            }
+        }
 
         const homeScreen = document.getElementById('homeScreen');
         const controlPanel = document.getElementById('controlPanel');
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // キャンバスサイズを自動調整
+        // キャンバスサイズ自動調整
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
             canvas.width = rect.width;
@@ -183,36 +204,25 @@
             gameState = 'story';
             homeScreen.style.display = 'none';
             controlPanel.style.display = 'grid';
-            player.x = worldSize / 2;
+            player.x = worldSize / 2; // 都市中央スポーン
             player.y = worldSize / 2;
+            
+            // 都市生成
+            generateCity();
             updateCamera();
             gameLoop();
         }
 
-        // 滑らかな長押し移動
+        // 長押し移動
         function setupLongPress(btnId, dx, dy) {
             const btn = document.getElementById(btnId);
             
-            const startMove = () => {
-                moveIntervals[btnId] = true;
-            };
-            
-            const stopMove = () => {
-                moveIntervals[btnId] = false;
-            };
+            const startMove = () => { moveIntervals[btnId] = true; };
+            const stopMove = () => { moveIntervals[btnId] = false; };
 
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                startMove();
-            }, { passive: false });
-            
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                stopMove();
-            }, { passive: false });
-            
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); startMove(); }, { passive: false });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); stopMove(); }, { passive: false });
             btn.addEventListener('touchcancel', stopMove);
-
             btn.addEventListener('mousedown', startMove);
             document.addEventListener('mouseup', stopMove);
         }
@@ -226,20 +236,15 @@
         document.addEventListener('keydown', (e) => {
             if (gameState !== 'story') return;
             const keyActions = {
-                'ArrowUp': [0, -1],
-                'ArrowDown': [0, 1],
-                'ArrowLeft': [-1, 0],
-                'ArrowRight': [1, 0]
+                'ArrowUp': [0, -1], 'ArrowDown': [0, 1],
+                'ArrowLeft': [-1, 0], 'ArrowRight': [1, 0]
             };
-            if (keyActions[e.key]) {
-                movePlayer(...keyActions[e.key]);
-            }
+            if (keyActions[e.key]) movePlayer(...keyActions[e.key]);
         });
 
         function movePlayer(dx, dy) {
             player.x += dx * player.speed;
             player.y += dy * player.speed;
-            
             player.x = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.x));
             player.y = Math.max(player.size/2, Math.min(worldSize - player.size/2, player.y));
         }
@@ -267,25 +272,48 @@
             }
             lastTime = currentTime;
 
-            ctx.fillStyle = '#000';
+            // 背景クリア（夜の都市）
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0a0a1a');
+            gradient.addColorStop(1, '#1a1a2a');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // チェック柄地面
-            const tileSize = 40;
-            const startX = Math.floor(camera.x / tileSize) * tileSize;
-            const startY = Math.floor(camera.y / tileSize) * tileSize;
+            // 道路（灰色グリッド）
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            const roadSize = 80;
+            const startX = Math.floor(camera.x / roadSize) * roadSize;
+            const startY = Math.floor(camera.y / roadSize) * roadSize;
             
-            for (let x = startX; x < camera.x + canvas.width + tileSize; x += tileSize) {
-                for (let y = startY; y < camera.y + canvas.height + tileSize; y += tileSize) {
-                    ctx.fillStyle = ((Math.floor(x/tileSize) + Math.floor(y/tileSize)) % 2 === 0) ? '#2d5a2d' : '#4a7c4a';
-                    ctx.fillRect(x - camera.x, y - camera.y, tileSize, tileSize);
-                }
+            for (let x = startX; x < camera.x + canvas.width + roadSize; x += roadSize) {
+                ctx.beginPath();
+                ctx.moveTo(x - camera.x, 0);
+                ctx.lineTo(x - camera.x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = startY; y < camera.y + canvas.height + roadSize; y += roadSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y - camera.y);
+                ctx.lineTo(canvas.width, y - camera.y);
+                ctx.stroke();
             }
 
-            // 🦙
-            ctx.font = `${Math.min(canvas.width, canvas.height) * 0.08}px Arial`;
+            // 建物描画
+            ctx.font = `${tileSize}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
+            buildings.forEach(building => {
+                const screenX = building.x - camera.x;
+                const screenY = building.y - camera.y;
+                if (screenX > -tileSize && screenX < canvas.width + tileSize &&
+                    screenY > -tileSize && screenY < canvas.height + tileSize) {
+                    ctx.fillText(building.emoji, screenX, screenY);
+                }
+            });
+
+            // 🦙（主人公）
+            ctx.font = `${Math.min(canvas.width, canvas.height) * 0.08}px Arial`;
             ctx.fillText('🦙', player.x - camera.x, player.y - camera.y);
 
             requestAnimationFrame(gameLoop);
